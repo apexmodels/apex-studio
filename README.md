@@ -48,7 +48,30 @@ flowchart TD
 
 ## 🚀 Quickstart
 
-### 1. Prerequisites
+### Option A: Homebrew Install (Recommended on macOS)
+
+Install directly via the official Homebrew tap:
+
+```bash
+# Tap and install Apex Studio
+brew tap nileshchakraborty/apex-studio
+brew install apex-studio
+
+# Start the background daemon service
+brew services start apex-studio
+
+# Install the extension bundle into VS Code or Cursor
+code --install-extension $(brew --prefix apex-studio)/share/apex-studio/apex-studio.vsix
+```
+
+> [!NOTE]
+> The Homebrew Formula automatically removes macOS Gatekeeper quarantine attributes (`xattr -d com.apple.quarantine`) on all installed wrapper scripts and extension bundles during `post_install`, allowing instant execution out-of-the-box.
+
+---
+
+### Option B: Local Source Setup
+
+#### 1. Prerequisites
 - **Ollama** running locally with `apex-phi-think-14b` and `apex-phi-coder-14b`:
   ```bash
   ollama list
@@ -60,13 +83,13 @@ flowchart TD
   ```
 - **Node.js 18+** & `npm`
 
-### 2. Setup Apex Studio
+#### 2. Setup Apex Studio
 Run the automated bootstrap script:
 ```bash
 ./scripts/setup_apex_studio.sh
 ```
 
-### 3. Launching Apex Studio
+#### 3. Launching Apex Studio
 Launch the engine daemon and the IDE:
 ```bash
 ./scripts/apex-studio.sh
