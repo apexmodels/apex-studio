@@ -55,6 +55,7 @@ Install directly via the official Homebrew tap:
 ```bash
 # Tap and install Apex Studio
 brew tap nileshchakraborty/apex-studio
+brew trust nileshchakraborty/apex-studio  # Required on Homebrew 7.0+
 brew install apex-studio
 
 # Start the background daemon service
