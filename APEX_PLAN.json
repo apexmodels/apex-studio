@@ -1,0 +1,97 @@
+{
+  "feature_name": "TokenBucketRateLimiter",
+  "objective": "Implement a thread-safe Token Bucket rate limiter utility in Python.",
+  "invariants": [
+    "The total number of tokens in the bucket cannot exceed the defined capacity.",
+    "Tokens are added to the bucket at a fixed rate, regardless of request frequency."
+  ],
+  "web_research": [
+    {
+      "query": "Token Bucket rate limiting algorithm explanation",
+      "title": "Token bucket - Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Token_bucket",
+      "snippet": "The token bucket is an algorithm used in packet-switched and telecommunications networks. It can be used to check that data transmissions, in the form of packets, conform to defined limits on bandwidth and burstiness (a measure of the unevenness or variations in the traffic flow).",
+      "content_preview": "From Wikipedia, the free encyclopedia\nScheduling algorithm for network transmissions\nThe\ntoken bucket\nis an\nalgorithm\nused in\npacket-switched\nand\ntelecommunications networks\n. It can be used to check that\ndata transmissions\n, in the form of\npackets\n, conform to defined limits on\nbandwidth\nand\nburstiness\n(a measure of the unevenness or variations in the\ntraffic\nflow). It can also be used as a\nscheduling algorithm\nto determine the timing of transmissions that will comply with the limits set for the bandwidth and burstiness: see\nnetwork scheduler\n.\nOverview\n[\nedit\n]\nThe token bucket algorithm is based on an\nanalogy\nof a fixed-capacity\nbucket\ninto which\ntokens\n, normally representing a unit of bytes or a single\npacket\nof predetermined size, are added at a fixed rate. When a packet is to be checked for conformance to the defined limits, the bucket is inspected to see if it contains sufficient tokens at that time. If so, the appropriate number of tokens, e.g. equivalent to the length of the packet in bytes, are removed (\"cashed in\"), and the packet is passed, e.g., for transmission. The packet does not conform if there are insufficient tokens in the bucket, and the contents of the bucket are not changed. Non-conformant packets can be treated in various ways:\nThey may be dropped.\nThey may be enqueued for subsequent transmission when sufficient tokens have accumulated in the bucket.\nThey may be transmitted, but marked as being non-conformant, possibly to be dropped subsequently if th"
+    },
+    {
+      "query": "Token Bucket rate limiting algorithm explanation",
+      "title": "Token Bucket Algorithm - GeeksforGeeks",
+      "url": "https://www.geeksforgeeks.org/computer-networks/token-bucket-algorithm/",
+      "snippet": "Steps Involved in Token Bucket Algorithm 1. Bucket Creation: A logical bucket with a fixed capacity (rate limit) is defined, representing the maximum number of tokens it can hold. 2. Token Refill: Tokens are added to the bucket at a constant rate until the bucket reaches its capacity. 3.",
+      "content_preview": "The Token Bucket Algorithm is a traffic control method where tokens are added to a bucket at a fixed rate (up to a maximum capacity), and packets can be transmitted only if enough tokens are available.\nControls the average sending rate of traffic entering the network\nSupports burst transmission within the bucket capacity while keeping long-term limits\nUsed in QoS, traffic shaping, and traffic policing\nNeed for the Token Bucket Algorithm\nToken Bucket is needed because fixed-rate limiting forces traffic to move at a constant speed, while real network traffic is naturally bursty. It provides controlled flexibility so short spikes don\u2019t get blocked, while long-term bandwidth limits are still enforced.\nNetworks have limited bandwidth, so uncontrolled traffic can cause congestion and packet loss\nReal traffic (web, video, APIs) arrives in bursts, not at a steady rate\nFixed-rate limiters may delay or drop packets even during short, legitimate spikes\nApplications often need brief high-speed sending to stay responsive\nUnrestricted bursts can overload the network if not controlled\nToken Bucket balances burst allowance with long-term average rate control\nKey Terminology and Parameters\nToken:\nA permission unit required to transmit data; a packet can be sent only if enough tokens are available.\nBucket:\nA logical storage that holds tokens until they are used.\nToken Generation Rate (r):\nTokens added per second; controls the long-term average sending rate.\nBucket Capacity (B):\nMaximum tokens "
+    },
+    {
+      "query": "Python libraries for implementing token bucket rate limiter",
+      "title": "How to Implement Token Bucket Rate Limiting in Python",
+      "url": "https://oneuptime.com/blog/post/2026-01-22-token-bucket-rate-limiting-python/view",
+      "snippet": "Jan 22, 2026 \u00b7 Learn how to implement the token bucket algorithm for rate limiting in Python. This guide covers in-memory and Redis-backed implementations, with practical FastAPI integration examples.",
+      "content_preview": "Rate limiting protects your API from abuse and ensures fair resource allocation. The token bucket algorithm is one of the most popular approaches because it allows controlled bursting while maintaining a steady average rate. This guide shows you how to implement it from scratch.\nEvery production API needs rate limiting. Without it, a single client can monopolize your resources, intentional or not. The token bucket algorithm strikes a balance between strict rate enforcement and allowing legitimate traffic bursts.\nHow Token Bucket Works\nImagine a bucket that holds tokens. Tokens are added to the bucket at a steady rate (the refill rate). When a request arrives, it must consume a token to proceed. If no tokens are available, the request is rejected or delayed.\n```\nflowchart LR\nsubgraph Bucket[\"Token Bucket\"]\nT1[Token]\nT2[Token]\nT3[Token]\nT4[Token]\nend\nR[Refill Rate: 10/sec] --> Bucket\nBucket --> A[Request 1: Allowed]\nBucket --> B[Request 2: Allowed]\nBucket --> C[Request 3: Allowed]\nD[Request when Empty] --> E[Rejected]\n```\nKey properties:\nProperty\nDescription\nBucket Size\nMaximum tokens (burst capacity)\nRefill Rate\nTokens added per second\nBurst\nBucket size allows temporary burst above average rate\nSmoothing\nSteady refill prevents sustained high rates\nBasic In-Memory Implementation\nLet us start with a simple single-process token bucket that uses monotonic time for accuracy.\n```\n# token_bucket.py\n# In-memory token bucket rate limiter\nimport time\nfrom dataclasses import dataclass\nfr"
+    },
+    {
+      "query": "Python libraries for implementing token bucket rate limiter",
+      "title": "token-bucket \u00b7 PyPI",
+      "url": "https://pypi.org/project/token-bucket/",
+      "snippet": "Jan 13, 2017 \u00b7 The token-bucket package provides an implementation of the token bucket algorithm suitable for use in web applications for shaping or policing request rates. This implementation does not require the use of an independent timer thread to manage the bucket state.",
+      "content_preview": "A required part of this site couldn\u2019t load. This may be due to a browser\nextension, network issues, or browser settings. Please check your\nconnection, disable any ad blockers, or try using a different browser."
+    }
+  ],
+  "steps": [
+    {
+      "id": 1,
+      "title": "Define TokenBucket Class",
+      "target_file": "rate_limiter/token_bucket.py",
+      "action": "create",
+      "invariants": [
+        "The bucket size and refill rate must be initialized upon object creation."
+      ],
+      "description": "Create a Python class to encapsulate the token bucket logic.",
+      "code_specification": "{\n  \"class_name\": \"TokenBucket\",\n  \"attributes\": [\n    {\n      \"name\": \"_capacity\",\n      \"type\": \"int\"\n    },\n    {\n      \"name\": \"_tokens\",\n      \"type\": \"float\"\n    },\n    {\n      \"name\": \"_last_refill_timestamp\",\n      \"type\": \"float\"\n    },\n    {\n      \"name\": \"_refill_rate\",\n      \"type\": \"float\"\n    }\n  ],\n  \"methods\": [\n    {\n      \"name\": \"__init__\",\n      \"arguments\": [\n        \"capacity: int\",\n        \"refill_rate: float\"\n      ],\n      \"return_type\": \"None\"\n    },\n    {\n      \"name\": \"_refill_tokens\",\n      \"arguments\": [],\n      \"return_type\": \"None\"\n    }\n  ]\n}",
+      "verification_command": "python -m py_compile rate_limiter/token_bucket.py",
+      "status": "completed",
+      "error": null
+    },
+    {
+      "id": 2,
+      "title": "Implement Token Refilling Logic",
+      "target_file": "rate_limiter/token_bucket.py",
+      "action": "modify",
+      "invariants": [
+        "Tokens are added based on the elapsed time since last refill, without exceeding capacity."
+      ],
+      "description": "Add logic to refill tokens at a fixed rate.",
+      "code_specification": "{\n  \"method_name\": \"_refill_tokens\",\n  \"logic\": \"Calculate elapsed time since last refill. Add (elapsed_time * refill_rate) to _tokens, capped by _capacity.\"\n}",
+      "verification_command": "pytest tests/test_token_bucket.py -k test_refill_logic",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "id": 3,
+      "title": "Implement Acquire Method",
+      "target_file": "rate_limiter/token_bucket.py",
+      "action": "modify",
+      "invariants": [
+        "A token can only be acquired if available; otherwise, the request is denied."
+      ],
+      "description": "Create a method to attempt acquiring a token for rate limiting.",
+      "code_specification": "{\n  \"method_name\": \"acquire\",\n  \"arguments\": [\n    \"amount: int = 1\"\n  ],\n  \"return_type\": \"bool\"\n}",
+      "verification_command": "pytest tests/test_token_bucket.py -k test_acquire_method",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "id": 4,
+      "title": "Ensure Thread Safety",
+      "target_file": "rate_limiter/token_bucket.py",
+      "action": "modify",
+      "invariants": [
+        "All operations on the token bucket must be thread-safe."
+      ],
+      "description": "Use threading locks to ensure that token refilling and acquisition are atomic.",
+      "code_specification": "{\n  \"imports\": [\n    \"from threading import Lock\"\n  ],\n  \"attributes\": [\n    {\n      \"name\": \"_lock\",\n      \"type\": \"Lock\"\n    }\n  ],\n  \"method_modifications\": [\n    {\n      \"method_name\": \"__init__\",\n      \"addition\": \"self._lock = Lock()\"\n    },\n    {\n      \"method_name\": \"_refill_tokens\",\n      \"addition\": \"with self._lock: ...\"\n    },\n    {\n      \"method_name\": \"acquire\",\n      \"addition\": \"with self._lock: ...\"\n    }\n  ]\n}",
+      "verification_command": "pytest tests/test_token_bucket_thread_safety.py",
+      "status": "pending",
+      "error": null
+    }
+  ],
+  "created_at": "2026-11-06T08:49:36.580489+00:00"
+}

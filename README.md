@@ -1,76 +1,144 @@
-# Visual Studio Code - Open Source ("Code - OSS")
-[![Feature Requests](https://img.shields.io/github/issues/microsoft/vscode/feature-request.svg)](https://github.com/microsoft/vscode/issues?q=is%3Aopen+is%3Aissue+label%3Afeature-request+sort%3Areactions-%2B1-desc)
-[![Bugs](https://img.shields.io/github/issues/microsoft/vscode/bug.svg)](https://github.com/microsoft/vscode/issues?utf8=✓&q=is%3Aissue+is%3Aopen+label%3Abug)
+# Apex Studio: Cognitive Invariant AI IDE
 
-## The Repository
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE.txt)
+[![Models: ApexPhi-14B](https://img.shields.io/badge/Models-ApexPhi--14B-green.svg)](https://huggingface.co/nileshc90/apex-phi-14b)
+[![GitHub](https://img.shields.io/badge/GitHub-apex--studio-black.svg)](https://github.com/nileshchakraborty/apex-studio)
 
-This repository ("`Code - OSS`") is where we (Microsoft) develop the [Visual Studio Code](https://code.visualstudio.com) product together with the community. Not only do we work on code and issues here, but we also publish our [roadmap](https://github.com/microsoft/vscode/wiki/Roadmap), [monthly iteration plans](https://github.com/microsoft/vscode/wiki/Iteration-Plans), and our [endgame plans](https://github.com/microsoft/vscode/wiki/Running-the-Endgame). This source code is available to everyone under the standard [MIT license](https://github.com/microsoft/vscode/blob/main/LICENSE.txt).
+**Apex Studio** is a next-generation open-source AI IDE built on top of the Microsoft VS Code (`Code - OSS`) architecture. It decouples software engineering into a **two-stage cognitive pipeline**:
+1. **Plan (Cognitive Architecture & Autonomous Web Exploration)**: Powered by `apex-phi-think-14b`, which queries DuckDuckGo, scrapes official documentation and APIs, synthesizes mathematical invariant constraints, and generates an ordered execution DAG (`APEX_PLAN.json`).
+2. **Act (Deterministic Code Actuation & Verification)**: Powered by `apex-phi-coder-14b`, which writes production-grade code, enforces AST syntax validation, executes step-specific verification commands, and runs reflexive self-repair loops upon any test failures.
 
-## Visual Studio Code
+---
 
-<p align="center">
-  <img alt="VS Code in action" src="https://github.com/user-attachments/assets/56af271c-949d-454c-a3ea-16188c063414">
-</p>
+## 🏛️ System Architecture
 
-[Visual Studio Code](https://code.visualstudio.com) is a distribution of the `Code - OSS` repository with Microsoft-specific customizations released under a traditional [Microsoft product license](https://code.visualstudio.com/License/).
+```mermaid
+flowchart TD
+    User([User Feature Request]) --> EngineDaemon[Apex Studio Engine Daemon :8000]
+    
+    subgraph Cognitive Stage: Plan Mode
+        EngineDaemon --> Planner[engine.planner: ApexPlanner]
+        Planner --> ThinkModel[apex-phi-think-14b Local Ollama]
+        ThinkModel --> QueryGen[Formulate Web Queries]
+        QueryGen --> WebSearch[engine.web_tools: DuckDuckGo Search]
+        WebSearch --> Scraper[engine.web_tools: Documentation Scraper]
+        Scraper --> ResearchSummary[Synthesize Web Research]
+        ResearchSummary --> InvariantEngine[Bounded Invariant Reasoner]
+        InvariantEngine --> ApexPlan[APEX_PLAN.json Execution DAG]
+    end
 
-[Visual Studio Code](https://code.visualstudio.com) combines the simplicity of a code editor with what developers need for their core edit-build-debug cycle. It provides comprehensive code editing, navigation, and understanding support along with lightweight debugging, a rich extensibility model, and lightweight integration with existing tools.
+    subgraph Actuation Stage: Act Mode
+        ApexPlan --> Coder[engine.coder: ApexCoder]
+        Coder --> CodeModel[apex-phi-coder-14b Local Ollama]
+        CodeModel --> ASTCheck{AST Syntax Valid?}
+        ASTCheck -- Failed --> ReflexPrompt[Reflex Prompt: Self-Correction]
+        ReflexPrompt --> CodeModel
+        ASTCheck -- Passed --> WriteFile[Write File to Disk]
+        WriteFile --> TestRunner[Run Verification Command]
+        TestRunner -- Non-Zero Exit --> ReflexPrompt
+        TestRunner -- Passed --> DiffViewer[VS Code Diff Review & Verified Step]
+    end
 
-Visual Studio Code is updated monthly with new features and bug fixes. You can download it for Windows, macOS, and Linux on the [Visual Studio Code website](https://code.visualstudio.com/Download). To get the latest releases every day, install the [Insiders build](https://code.visualstudio.com/insiders).
+    subgraph IDE Integration
+        DiffViewer --> ExtensionUI[extensions/apex-studio: Activity Bar UI]
+    end
+```
 
-## Contributing
+---
 
-There are many ways in which you can participate in this project, for example:
+## 🚀 Quickstart
 
-* [Submit bugs and feature requests](https://github.com/microsoft/vscode/issues), and help us verify them as they are checked in
-* Review [source code changes](https://github.com/microsoft/vscode/pulls)
-* Review the [documentation](https://github.com/microsoft/vscode-docs) and make pull requests for anything from typos to new content.
+### 1. Prerequisites
+- **Ollama** running locally with `apex-phi-think-14b` and `apex-phi-coder-14b`:
+  ```bash
+  ollama list
+  # Confirm apex-phi-think-14b and apex-phi-coder-14b are present
+  ```
+- **Python 3.10+** with dependencies:
+  ```bash
+  pip install ddgs beautifulsoup4 fastapi uvicorn requests pydantic
+  ```
+- **Node.js 18+** & `npm`
 
-If you are interested in fixing issues and contributing directly to the codebase, please see the document [How to Contribute](https://github.com/microsoft/vscode/wiki/How-to-Contribute), which covers the following:
+### 2. Setup Apex Studio
+Run the automated bootstrap script:
+```bash
+./scripts/setup_apex_studio.sh
+```
 
-* [How to build and run from source](https://github.com/microsoft/vscode/wiki/How-to-Contribute)
-* [The development workflow, including debugging and running tests](https://github.com/microsoft/vscode/wiki/How-to-Contribute#debugging)
-* [Coding guidelines](https://github.com/microsoft/vscode/wiki/Coding-Guidelines)
-* [Submitting pull requests](https://github.com/microsoft/vscode/wiki/How-to-Contribute#pull-requests)
-* [Finding an issue to work on](https://github.com/microsoft/vscode/wiki/How-to-Contribute#where-to-contribute)
-* [Contributing to translations](https://aka.ms/vscodeloc)
+### 3. Launching Apex Studio
+Launch the engine daemon and the IDE:
+```bash
+./scripts/apex-studio.sh
+```
+Or start the engine daemon independently:
+```bash
+python3 -m engine.server
+```
 
-## Feedback
+---
 
-* Ask a question on [Stack Overflow](https://stackoverflow.com/questions/tagged/vscode)
-* [Request a new feature](CONTRIBUTING.md)
-* Upvote [popular feature requests](https://github.com/microsoft/vscode/issues?q=is%3Aopen+is%3Aissue+label%3Afeature-request+sort%3Areactions-%2B1-desc)
-* [File an issue](https://github.com/microsoft/vscode/issues)
-* Connect with the extension author community on [GitHub Discussions](https://github.com/microsoft/vscode-discussions/discussions) or [Slack](https://aka.ms/vscode-dev-community)
-* Follow [@code](https://x.com/code) and let us know what you think!
+## 🖥️ VS Code / Cursor Extension
 
-See our [wiki](https://github.com/microsoft/vscode/wiki/Feedback-Channels) for a description of each of these channels and information on some other available community-driven channels.
+Apex Studio includes a dedicated extension located in `extensions/apex-studio`.
 
-## Related Projects
+### Installation in VS Code / Cursor
+```bash
+code --install-extension apex-studio.vsix
+# or for Cursor:
+cursor --install-extension apex-studio.vsix
+```
 
-Many of the core components and extensions to VS Code live in their own repositories on GitHub. For example, the [node debug adapter](https://github.com/microsoft/vscode-node-debug) and the [mono debug adapter](https://github.com/microsoft/vscode-mono-debug) repositories are separate from each other. For a complete list, please visit the [Related Projects](https://github.com/microsoft/vscode/wiki/Related-Projects) page on our [wiki](https://github.com/microsoft/vscode/wiki).
+### Features
+- **Sidebar Activity Container**: Direct access to Apex Studio in the VS Code Activity Bar.
+- **Plan Tab**: Input feature specifications, toggle live DuckDuckGo web research, view real-time cognitive reasoning traces, and preview the generated invariant step DAG.
+- **Act Tab**: Step-by-step progress tracking, one-click execution of planned steps with AST validation, live unified diff reviews, and terminal verification feedback.
+- **Direct Editor Navigation**: Click on any target file in the plan to open it directly in the editor.
 
-## Bundled Extensions
+---
 
-VS Code includes a set of built-in extensions located in the [extensions](extensions) folder, including grammars and snippets for many languages. Extensions that provide rich language support (inline suggestions, Go to Definition) for a language have the suffix `language-features`. For example, the `json` extension provides coloring for `JSON` and the `json-language-features` extension provides rich language support for `JSON`.
+## ⌨️ Command Line Interface (CLI)
 
-## Development Container
+You can use the full cognitive pipeline directly from the command line:
 
-This repository includes a Visual Studio Code Dev Containers / GitHub Codespaces development container.
+```bash
+# Check status of models and daemon
+python3 -m engine.cli status
 
-* For [Dev Containers](https://aka.ms/vscode-remote/download/containers), use the **Dev Containers: Clone Repository in Container Volume...** command, which creates a Docker volume for better disk I/O on macOS and Windows.
-  * If you already have VS Code and Docker installed, you can also click [here](https://vscode.dev/redirect?url=vscode://ms-vscode-remote.remote-containers/cloneInVolume?url=https://github.com/microsoft/vscode) to get started. This will cause VS Code to automatically install the Dev Containers extension if needed, clone the source code into a container volume, and spin up a dev container for use.
+# Search web for library documentation
+python3 -m engine.cli search "fastapi lifespan asynccontextmanager"
 
-* For Codespaces, install the [GitHub Codespaces](https://marketplace.visualstudio.com/items?itemName=GitHub.codespaces) extension in VS Code, and use the **Codespaces: Create New Codespace** command.
+# Plan a feature using ApexPhi-Think-14B with autonomous web search
+python3 -m engine.cli plan "Add rate-limiting middleware using Redis token-bucket"
 
-Docker / the Codespace should have at least **4 cores and 6 GB of RAM (8 GB recommended)** to run a full build. See the [development container README](.devcontainer/README.md) for more information.
+# Execute a single step from APEX_PLAN.json
+python3 -m engine.cli act --step 1
 
-## Code of Conduct
+# Execute all steps sequentially with verification
+python3 -m engine.cli act --all
 
-This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/). For more information, see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
+# Launch the FastAPI engine daemon
+python3 -m engine.cli serve
+```
 
-## License
+---
 
-Copyright (c) Microsoft Corporation. All rights reserved.
+## 🔌 Engine API Endpoints
 
-Licensed under the [MIT](LICENSE.txt) license.
+The Apex Studio backend daemon runs on `http://127.0.0.1:8000`:
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/status` | `GET` | Health check, connected models, active plan status |
+| `/api/search` | `POST` | DuckDuckGo search query execution |
+| `/api/scrape` | `POST` | Webpage scraper and markdown extractor |
+| `/api/plan` | `POST` | Synthesize feature plan with `apex-phi-think-14b` |
+| `/api/plan/current` | `GET` | Retrieve the active plan DAG (`APEX_PLAN.json`) |
+| `/api/execute-step` | `POST` | Execute step with `apex-phi-coder-14b` |
+| `/api/execute-all` | `POST` | Sequentially execute all pending steps |
+| `/api/plan/reset` | `POST` | Clear active plan |
+
+---
+
+## 📄 License
+This project is licensed under the MIT License - see the [LICENSE.txt](LICENSE.txt) file for details.

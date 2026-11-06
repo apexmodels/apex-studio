@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apex Studio</title>
+    <link rel="stylesheet" href="${styleUri}">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="title-row">
+                <div class="brand">
+                    <span class="logo">▲</span>
+                    <h2>Apex Studio</h2>
+                </div>
+                <div id="engineStatus" class="status-pill status-offline">Offline</div>
+            </div>
+            <div class="models-row">
+                <span class="model-badge" title="Cognitive Planner & Web Explorer">🧠 ApexPhi-Think-14B</span>
+                <span class="model-badge" title="Deterministic Code Actuator">⚡ ApexPhi-Coder-14B</span>
+            </div>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <div class="tab-bar">
+            <button id="tabPlanBtn" class="tab active" onclick="switchTab('plan')">1. Plan (Cognition)</button>
+            <button id="tabActBtn" class="tab" onclick="switchTab('act')">2. Act (Coder)</button>
+        </div>
+
+        <!-- PLAN VIEW -->
+        <div id="planView" class="tab-content active">
+            <div class="section">
+                <label for="featurePrompt" class="label">Feature Specification</label>
+                <textarea id="featurePrompt" class="input-area" rows="4" placeholder="Describe the feature or API you want to build (e.g. 'Build rate-limiting middleware using Redis token-bucket algorithm with FastAPI')"></textarea>
+                
+                <div class="option-row">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="allowSearch" checked>
+                        <span>Autonomous Web Research (Docs & APIs)</span>
+                    </label>
+                </div>
+
+                <button id="btnPlan" class="btn btn-primary" onclick="requestPlan()">
+                    <span>🚀 Synthesize Plan with ApexPhi-Think</span>
+                </button>
+            </div>
+
+            <!-- Activity / Cognition Feed -->
+            <div id="activityCard" class="card hidden">
+                <div class="card-header">Cognitive Feed & Web Search</div>
+                <div id="activityFeed" class="feed-content"></div>
+            </div>
+
+            <!-- Current Plan Summary -->
+            <div id="planSummaryCard" class="card hidden">
+                <div class="card-header">
+                    <span id="planFeatureName">Feature Plan</span>
+                </div>
+                <p id="planObjective" class="text-muted"></p>
+                
+                <div class="invariants-section">
+                    <div class="sub-label">Guaranteed Invariants:</div>
+                    <ul id="planInvariants" class="invariants-list"></ul>
+                </div>
+
+                <div class="steps-preview">
+                    <div class="sub-label">Planned Steps:</div>
+                    <div id="planStepsPreview" class="steps-preview-list"></div>
+                </div>
+
+                <button class="btn btn-secondary mt-2" onclick="switchTab('act')">
+                    Proceed to Implementation ➔
+                </button>
+            </div>
+        </div>
+
+        <!-- ACT VIEW -->
+        <div id="actView" class="tab-content">
+            <div class="section">
+                <div class="action-header">
+                    <h3>Implementation Pipeline</h3>
+                    <button class="btn btn-secondary btn-sm" onclick="executeAll()">Run All Steps</button>
+                </div>
+                
+                <div id="noPlanNotice" class="notice">
+                    No active plan. Please formulate a plan in the "Plan" tab first.
+                </div>
+
+                <div id="stepsContainer" class="steps-list"></div>
+            </div>
+        </div>
+
+        <!-- Terminal Logs Drawer -->
+        <div class="footer-terminal">
+            <div class="terminal-header" onclick="toggleLogs()">
+                <span>Console Logs</span>
+                <span id="logToggleIcon">▼</span>
+            </div>
+            <div id="terminalLogs" class="terminal-body"></div>
+        </div>
+    </div>
+
+    <script src="${scriptUri}"></script>
+</body>
+</html>

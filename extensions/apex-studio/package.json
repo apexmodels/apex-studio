@@ -1,0 +1,82 @@
+{
+  "name": "apex-studio",
+  "displayName": "Apex Studio",
+  "description": "Cognitive Architecture & Actuation IDE powered by ApexPhi-Think and ApexPhi-Coder.",
+  "version": "1.0.0",
+  "publisher": "apex",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nileshchakraborty/apex-studio"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "AI",
+    "Programming Languages",
+    "Other"
+  ],
+  "main": "./out/extension.js",
+  "browser": "./out/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "apex-studio",
+          "title": "Apex Studio",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "apex-studio": [
+        {
+          "type": "webview",
+          "id": "apexStudio.sidebar",
+          "name": "Apex Studio (Think & Code)"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "apexStudio.planFeature",
+        "title": "Apex Studio: Plan Feature (ApexPhi-Think)",
+        "category": "Apex Studio"
+      },
+      {
+        "command": "apexStudio.executeStep",
+        "title": "Apex Studio: Execute Step (ApexPhi-Coder)",
+        "category": "Apex Studio"
+      },
+      {
+        "command": "apexStudio.executeAll",
+        "title": "Apex Studio: Execute All Steps",
+        "category": "Apex Studio"
+      },
+      {
+        "command": "apexStudio.startDaemon",
+        "title": "Apex Studio: Start Engine Daemon",
+        "category": "Apex Studio"
+      },
+      {
+        "command": "apexStudio.refresh",
+        "title": "Apex Studio: Refresh Status",
+        "category": "Apex Studio"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.43",
+    "@types/vscode": "^1.90.0",
+    "typescript": "^5.9.3"
+  }
+}

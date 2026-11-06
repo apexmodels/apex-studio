@@ -1,0 +1,234 @@
+"""
+Apex Studio Daemon API Server.
+Bridges VS Code Extension, Web UI, and CLI with the dual-model Apex engine.
+"""
+
+import json
+import logging
+import os
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+import requests
+import uvicorn
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
+
+from engine.planner import ApexPlan, ApexPlanner, ApexStep
+from engine.coder import ApexCoder, StepExecutionResult
+from engine.web_tools import search_web, fetch_page_content
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+logger = logging.getLogger("apex_studio.server")
+
+app = FastAPI(title="Apex Studio Engine", version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+WORKSPACE_DIR = Path(os.environ.get("APEX_WORKSPACE", os.getcwd())).resolve()
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
+THINK_MODEL = os.environ.get("APEX_THINK_MODEL", "apex-phi-think-14b")
+CODER_MODEL = os.environ.get("APEX_CODER_MODEL", "apex-phi-coder-14b")
+
+planner = ApexPlanner(ollama_url=OLLAMA_URL, model=THINK_MODEL, workspace_dir=str(WORKSPACE_DIR))
+coder = ApexCoder(ollama_url=OLLAMA_URL, model=CODER_MODEL, workspace_dir=str(WORKSPACE_DIR))
+
+# In-memory plan cache
+current_plan: Optional[ApexPlan] = None
+execution_logs: List[str] = []
+
+
+def add_log(msg: str):
+    logger.info(msg)
+    execution_logs.append(msg)
+    if len(execution_logs) > 200:
+        execution_logs.pop(0)
+
+
+class PlanRequest(BaseModel):
+    prompt: str
+    allow_search: bool = True
+
+
+class ExecuteStepRequest(BaseModel):
+    step_id: int
+
+
+class SearchRequest(BaseModel):
+    query: str
+    max_results: int = 5
+
+
+class ScrapeRequest(BaseModel):
+    url: str
+    max_chars: int = 5000
+
+
+@app.get("/health")
+@app.get("/api/status")
+def get_status():
+    ollama_ok = False
+    available_models = []
+    try:
+        resp = requests.get(f"{OLLAMA_URL}/api/tags", timeout=5)
+        if resp.status_code == 200:
+            ollama_ok = True
+            available_models = [m["name"] for m in resp.json().get("models", [])]
+    except Exception as e:
+        logger.warning("Ollama healthcheck failed: %s", e)
+
+    return {
+        "status": "online",
+        "workspace": str(WORKSPACE_DIR),
+        "ollama_connected": ollama_ok,
+        "think_model": THINK_MODEL,
+        "coder_model": CODER_MODEL,
+        "think_model_ready": any(THINK_MODEL in m for m in available_models),
+        "coder_model_ready": any(CODER_MODEL in m for m in available_models),
+        "has_active_plan": current_plan is not None,
+        "total_steps": len(current_plan.steps) if current_plan else 0,
+        "recent_logs": execution_logs[-10:]
+    }
+
+
+@app.post("/api/search")
+def api_search(req: SearchRequest):
+    return {"query": req.query, "results": search_web(req.query, req.max_results)}
+
+
+@app.post("/api/scrape")
+def api_scrape(req: ScrapeRequest):
+    return fetch_page_content(req.url, req.max_chars)
+
+
+@app.post("/api/plan")
+def api_plan_feature(req: PlanRequest):
+    global current_plan
+    add_log(f"Received plan request: '{req.prompt}' (search={req.allow_search})")
+    try:
+        plan = planner.plan_feature(
+            feature_prompt=req.prompt,
+            allow_search=req.allow_search,
+            progress_cb=add_log
+        )
+        current_plan = plan
+        return {"status": "success", "plan": plan.model_dump()}
+    except Exception as e:
+        logger.exception("Planning failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/plan/current")
+def api_get_current_plan():
+    global current_plan
+    if not current_plan:
+        plan_file = WORKSPACE_DIR / "APEX_PLAN.json"
+        if plan_file.exists():
+            try:
+                data = json.loads(plan_file.read_text(encoding="utf-8"))
+                current_plan = ApexPlan(**data)
+            except Exception as e:
+                logger.warning("Could not load APEX_PLAN.json: %s", e)
+    if not current_plan:
+        return {"has_plan": False, "plan": None}
+    return {"has_plan": True, "plan": current_plan.model_dump()}
+
+
+@app.post("/api/execute-step")
+def api_execute_step(req: ExecuteStepRequest):
+    global current_plan
+    if not current_plan:
+        api_get_current_plan()
+    if not current_plan:
+        raise HTTPException(status_code=400, detail="No active plan found. Please create a plan first.")
+
+    target_step: Optional[ApexStep] = None
+    for s in current_plan.steps:
+        if s.id == req.step_id:
+            target_step = s
+            break
+
+    if not target_step:
+        raise HTTPException(status_code=404, detail=f"Step ID {req.step_id} not found in plan.")
+
+    add_log(f"Executing step {target_step.id}: {target_step.title} -> {target_step.target_file}")
+    target_step.status = "running"
+
+    result = coder.execute_step(
+        step=target_step,
+        feature_objective=current_plan.objective,
+        progress_cb=add_log
+    )
+
+    target_step.status = "completed" if result.success else "failed"
+    target_step.error = result.error
+
+    # Persist updated plan status
+    plan_file = WORKSPACE_DIR / "APEX_PLAN.json"
+    plan_file.write_text(current_plan.model_dump_json(indent=2), encoding="utf-8")
+
+    return {
+        "status": "success" if result.success else "error",
+        "result": result.to_dict(),
+        "step": target_step.model_dump()
+    }
+
+
+@app.post("/api/execute-all")
+def api_execute_all():
+    global current_plan
+    if not current_plan:
+        api_get_current_plan()
+    if not current_plan:
+        raise HTTPException(status_code=400, detail="No active plan found.")
+
+    results = []
+    for step in current_plan.steps:
+        if step.status == "completed":
+            continue
+        add_log(f"Auto-executing step {step.id} / {len(current_plan.steps)}: {step.title}")
+        step.status = "running"
+        res = coder.execute_step(step, current_plan.objective, progress_cb=add_log)
+        step.status = "completed" if res.success else "failed"
+        step.error = res.error
+        results.append(res.to_dict())
+        if not res.success:
+            add_log(f"Execution halted on step {step.id} due to failure.")
+            break
+
+    plan_file = WORKSPACE_DIR / "APEX_PLAN.json"
+    plan_file.write_text(current_plan.model_dump_json(indent=2), encoding="utf-8")
+
+    return {
+        "status": "completed",
+        "results": results,
+        "plan": current_plan.model_dump()
+    }
+
+
+@app.post("/api/plan/reset")
+def api_reset_plan():
+    global current_plan
+    current_plan = None
+    plan_file = WORKSPACE_DIR / "APEX_PLAN.json"
+    if plan_file.exists():
+        plan_file.unlink()
+    add_log("Active plan reset.")
+    return {"status": "reset"}
+
+
+def start():
+    port = int(os.environ.get("APEX_PORT", 8000))
+    host = os.environ.get("APEX_HOST", "127.0.0.1")
+    logger.info("Starting Apex Studio Engine Daemon on http://%s:%d", host, port)
+    uvicorn.run("engine.server:app", host=host, port=port, reload=False, log_level="info")
+
+
+if __name__ == "__main__":
+    start()
