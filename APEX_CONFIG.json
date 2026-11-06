@@ -1,0 +1,4 @@
+{
+  "think_model": "apex-phi-think-14b",
+  "coder_model": "apex-phi-coder-14b"
+}

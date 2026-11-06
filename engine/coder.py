@@ -61,16 +61,23 @@ class ApexCoder:
         self.model = model
         self.workspace_dir = Path(workspace_dir or os.getcwd()).resolve()
 
+    def set_model(self, model: str):
+        """Update active coder model."""
+        self.model = model
+        logger.info("Coder active model switched to: %s", model)
+
     def _query_ollama(
         self,
         prompt: str,
         system_prompt: Optional[str] = None,
         temperature: float = 0.2,
-        num_predict: int = 2048
+        num_predict: int = 2048,
+        model: Optional[str] = None
     ) -> str:
-        """Query local Ollama server running ApexPhi-Coder."""
+        """Query local Ollama server running specified coder model."""
+        active_model = model or self.model
         payload: Dict[str, Any] = {
-            "model": self.model,
+            "model": active_model,
             "prompt": prompt,
             "stream": False,
             "options": {
@@ -117,9 +124,11 @@ class ApexCoder:
         step: ApexStep,
         feature_objective: str = "",
         max_retries: int = 2,
-        progress_cb: Optional[Callable[[str], None]] = None
+        progress_cb: Optional[Callable[[str], None]] = None,
+        model: Optional[str] = None
     ) -> StepExecutionResult:
         """Execute a single planned step with syntax checking, verification, and reflex self-correction."""
+        active_model = model or self.model
         if not step.target_file and step.action == "execute":
             # Command execution only step
             if step.verification_command:
@@ -180,15 +189,16 @@ Required Invariants:
 
         for attempt in range(max_retries + 1):
             if attempt > 0 and progress_cb:
-                progress_cb(f"Reflex self-correction attempt {attempt}/{max_retries} for step {step.id}...")
+                progress_cb(f"Reflex self-correction attempt {attempt}/{max_retries} for step {step.id} using {active_model}...")
             elif progress_cb:
-                progress_cb(f"Generating code with ApexPhi-Coder for {step.target_file}...")
+                progress_cb(f"Generating code with {active_model} for {step.target_file}...")
 
             raw_response = self._query_ollama(
                 prompt=current_prompt,
                 system_prompt=system_prompt,
                 temperature=0.15 + (attempt * 0.05),
-                num_predict=2048
+                num_predict=2048,
+                model=active_model
             )
 
             code = self._extract_code(raw_response)

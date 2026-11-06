@@ -17,9 +17,33 @@
                 </div>
                 <div id="engineStatus" class="status-pill status-offline">Offline</div>
             </div>
-            <div class="models-row">
-                <span class="model-badge" title="Cognitive Planner & Web Explorer">🧠 ApexPhi-Think-14B</span>
-                <span class="model-badge" title="Deterministic Code Actuator">⚡ ApexPhi-Coder-14B</span>
+            
+            <!-- Model Switcher Control Bar -->
+            <div class="model-switcher-box">
+                <div class="suite-pills">
+                    <button class="suite-pill active" id="suite-phi" onclick="selectSuite('phi')" title="ApexPhi-14B Suite">Phi-14B</button>
+                    <button class="suite-pill" id="suite-mistral" onclick="selectSuite('mistral')" title="ApexMistral-22B Suite">Mistral-22B</button>
+                    <button class="suite-pill" id="suite-qwen" onclick="selectSuite('qwen')" title="ApexQwen-14B Suite">Qwen-14B</button>
+                </div>
+
+                <div class="model-select-row">
+                    <div class="model-select-item">
+                        <label class="model-label">🧠 Planner:</label>
+                        <select id="thinkModelSelect" class="model-select" onchange="onModelSelectChange()">
+                            <option value="apex-phi-think-14b">apex-phi-think-14b</option>
+                            <option value="apex-mistral-think-22b">apex-mistral-think-22b</option>
+                            <option value="apex-think-14b">apex-think-14b</option>
+                        </select>
+                    </div>
+                    <div class="model-select-item">
+                        <label class="model-label">⚡ Coder:</label>
+                        <select id="coderModelSelect" class="model-select" onchange="onModelSelectChange()">
+                            <option value="apex-phi-coder-14b">apex-phi-coder-14b</option>
+                            <option value="apex-mistral-coder-22b">apex-mistral-coder-22b</option>
+                            <option value="apex-coder-14b">apex-coder-14b</option>
+                        </select>
+                    </div>
+                </div>
             </div>
         </header>
 
@@ -43,7 +67,7 @@
                 </div>
 
                 <button id="btnPlan" class="btn btn-primary" onclick="requestPlan()">
-                    <span>🚀 Synthesize Plan with ApexPhi-Think</span>
+                    <span id="btnPlanText">🚀 Synthesize Plan</span>
                 </button>
             </div>
 

@@ -101,12 +101,35 @@ class ApexSidebarProvider implements vscode.WebviewViewProvider {
                     }
                     break;
                 }
+                case 'fetchModels': {
+                    try {
+                        const modelsData = await getJson('/api/models');
+                        webviewView.webview.postMessage({ type: 'modelsLoaded', data: modelsData });
+                    } catch (err: any) {
+                        console.error('Failed to fetch models:', err);
+                    }
+                    break;
+                }
+                case 'selectModels': {
+                    try {
+                        const result = await postJson('/api/models/select', {
+                            think_model: data.think_model,
+                            coder_model: data.coder_model
+                        });
+                        webviewView.webview.postMessage({ type: 'modelsUpdated', data: result });
+                        vscode.window.showInformationMessage(`Apex Models: Think=${result.active_think_model}, Code=${result.active_coder_model}`);
+                    } catch (err: any) {
+                        vscode.window.showErrorMessage(`Failed to switch models: ${err.message}`);
+                    }
+                    break;
+                }
                 case 'planFeature': {
                     try {
-                        vscode.window.showInformationMessage(`Apex Studio: ApexPhi-Think is researching and planning...`);
+                        vscode.window.showInformationMessage(`Apex Studio: Researching and planning feature...`);
                         const result = await postJson('/api/plan', {
                             prompt: data.prompt,
-                            allow_search: data.allow_search !== false
+                            allow_search: data.allow_search !== false,
+                            think_model: data.think_model
                         });
                         webviewView.webview.postMessage({ type: 'planCreated', data: result.plan });
                         vscode.window.showInformationMessage(`Apex Studio: Plan created with ${result.plan.steps.length} steps!`);
@@ -118,7 +141,10 @@ class ApexSidebarProvider implements vscode.WebviewViewProvider {
                 }
                 case 'executeStep': {
                     try {
-                        const result = await postJson('/api/execute-step', { step_id: data.step_id });
+                        const result = await postJson('/api/execute-step', {
+                            step_id: data.step_id,
+                            coder_model: data.coder_model
+                        });
                         webviewView.webview.postMessage({ type: 'stepExecuted', data: result });
                         if (result.status === 'success') {
                             vscode.window.showInformationMessage(`Apex Studio: Step ${data.step_id} executed & verified!`);
@@ -133,8 +159,8 @@ class ApexSidebarProvider implements vscode.WebviewViewProvider {
                 }
                 case 'executeAll': {
                     try {
-                        vscode.window.showInformationMessage(`Apex Studio: Executing all planned steps with ApexPhi-Coder...`);
-                        const result = await postJson('/api/execute-all', {});
+                        vscode.window.showInformationMessage(`Apex Studio: Executing all planned steps...`);
+                        const result = await postJson('/api/execute-all', { coder_model: data.coder_model });
                         webviewView.webview.postMessage({ type: 'allExecuted', data: result });
                         vscode.window.showInformationMessage(`Apex Studio: All steps executed!`);
                     } catch (err: any) {
@@ -185,6 +211,10 @@ function startEngineTerminal() {
     vscode.window.showInformationMessage('Apex Studio Daemon started on http://127.0.0.1:8000');
 }
 
+interface SuiteQuickPickItem extends vscode.QuickPickItem {
+    suite: any;
+}
+
 export function activate(context: vscode.ExtensionContext) {
     const provider = new ApexSidebarProvider(context.extensionUri);
 
@@ -199,6 +229,58 @@ export function activate(context: vscode.ExtensionContext) {
     );
 
     context.subscriptions.push(
+        vscode.commands.registerCommand('apexStudio.switchModel', async () => {
+            try {
+                const modelsData = await getJson('/api/models');
+                const suiteOptions: SuiteQuickPickItem[] = (modelsData.suites || []).map((s: any) => ({
+                    label: s.name,
+                    description: `Think: ${s.think_model} | Code: ${s.coder_model}`,
+                    suite: s
+                }));
+
+                suiteOptions.push({
+                    label: 'Custom Model Selection...',
+                    description: 'Select individual Think and Coder models from Ollama',
+                    suite: null
+                });
+
+                const picked = await vscode.window.showQuickPick<SuiteQuickPickItem>(suiteOptions, {
+                    placeHolder: 'Select Apex Studio Model Suite or Custom Pairing'
+                });
+
+                if (!picked) return;
+
+                if (picked.suite) {
+                    const res = await postJson('/api/models/select', {
+                        think_model: picked.suite.think_model,
+                        coder_model: picked.suite.coder_model
+                    });
+                    vscode.window.showInformationMessage(`Switched to ${picked.label}!`);
+                } else {
+                    const allModels = modelsData.all_models || [];
+                    const thinkPick = await vscode.window.showQuickPick(allModels, {
+                        placeHolder: 'Choose Planner (Thinking) Model'
+                    });
+                    if (!thinkPick) return;
+
+                    const coderPick = await vscode.window.showQuickPick(allModels, {
+                        placeHolder: 'Choose Actuator (Coder) Model'
+                    });
+                    if (!coderPick) return;
+
+                    await postJson('/api/models/select', {
+                        think_model: thinkPick,
+                        coder_model: coderPick
+                    });
+                    vscode.window.showInformationMessage(`Models updated: Think=${thinkPick}, Code=${coderPick}`);
+                }
+            } catch (err: any) {
+                vscode.window.showErrorMessage(`Failed to switch model: ${err.message}`);
+            }
+        })
+    );
+
+    context.subscriptions.push(
         vscode.commands.registerCommand('apexStudio.planFeature', async () => {
             const prompt = await vscode.window.showInputBox({
                 prompt: 'Describe the feature you want Apex Studio to research and plan:',
@@ -206,7 +288,7 @@ export function activate(context: vscode.ExtensionContext) {
             });
             if (prompt) {
                 try {
-                    vscode.window.showInformationMessage('Apex Studio: Planning feature with ApexPhi-Think-14B...');
+                    vscode.window.showInformationMessage('Apex Studio: Planning feature with active cognitive model...');
                     const result = await postJson('/api/plan', { prompt, allow_search: true });
                     vscode.window.showInformationMessage(`Plan ready with ${result.plan.steps.length} steps!`);
                 } catch (e: any) {
@@ -219,7 +301,7 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.commands.registerCommand('apexStudio.executeAll', async () => {
             try {
-                vscode.window.showInformationMessage('Executing all planned steps with ApexPhi-Coder...');
+                vscode.window.showInformationMessage('Executing all planned steps with active coder model...');
                 await postJson('/api/execute-all', {});
             } catch (e: any) {
                 vscode.window.showErrorMessage(`Execution failed: ${e.message}`);

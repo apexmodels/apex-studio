@@ -88,6 +88,83 @@ body {
     flex-wrap: wrap;
 }
 
+/* Model Switcher Box */
+.model-switcher-box {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 6px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.suite-pills {
+    display: flex;
+    gap: 4px;
+}
+
+.suite-pill {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s ease;
+}
+
+.suite-pill:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: var(--text-primary);
+}
+
+.suite-pill.active {
+    background: rgba(0, 122, 204, 0.25);
+    border-color: var(--accent);
+    color: #9cdcfe;
+}
+
+.model-select-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.model-select-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.model-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    width: 65px;
+    flex-shrink: 0;
+}
+
+.model-select {
+    flex: 1;
+    background: var(--input-bg);
+    color: var(--input-fg);
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+    font-size: 11px;
+    padding: 2px 4px;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.model-select:focus {
+    outline: 1px solid var(--accent);
+}
+
 .model-badge {
     font-size: 11px;
     background: rgba(255, 255, 255, 0.06);

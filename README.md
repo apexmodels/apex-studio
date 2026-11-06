@@ -78,6 +78,41 @@ python3 -m engine.server
 
 ---
 
+## 🔄 Multi-Model Switching
+
+Apex Studio supports switching dynamically between any installed models in Ollama:
+
+| Suite | Planner (Cognition & Web) | Actuator (Deterministic Code) | Architecture |
+|---|---|---|---|
+| **Phi Suite (14B)** | `apex-phi-think-14b` | `apex-phi-coder-14b` | Microsoft Phi-4 fine-tuned |
+| **Mistral Suite (22B)** | `apex-mistral-think-22b` | `apex-mistral-coder-22b` | Mistral NeMo 22B |
+| **Qwen Suite (14B)** | `apex-think-14b` | `apex-coder-14b` | Qwen-2.5 14B with CID distillation |
+| **Custom Pairings** | Any Ollama model (e.g. `deepseek-r1:14b`) | Any Ollama model (e.g. `codestral`) | User selected |
+
+### Switching via VS Code / Cursor:
+- **Sidebar Header**: Click on the preset suite pills (`Phi-14B`, `Mistral-22B`, `Qwen-14B`) or use the dropdown selectors.
+- **Command Palette**: Run `Apex Studio: Switch Model Suite / Active Models` to switch suites or select custom models.
+
+### Switching via CLI:
+```bash
+# View all installed models & active selections
+python3 -m engine.cli models
+
+# Switch to a preset suite
+python3 -m engine.cli set-model --suite mistral
+python3 -m engine.cli set-model --suite qwen
+python3 -m engine.cli set-model --suite phi
+
+# Custom pairing
+python3 -m engine.cli set-model --think deepseek-r1:14b --coder codestral
+
+# On-the-fly override during planning or execution
+python3 -m engine.cli plan "Feature..." --think-model apex-mistral-think-22b
+python3 -m engine.cli act --step 1 --coder-model apex-mistral-coder-22b
+```
+
+---
+
 ## 🖥️ VS Code / Cursor Extension
 
 Apex Studio includes a dedicated extension located in `extensions/apex-studio`.
@@ -90,6 +125,7 @@ cursor --install-extension apex-studio.vsix
 ```
 
 ### Features
+- **Model Switcher**: Direct suite pills and dropdown selectors to toggle between `Phi-14B`, `Mistral-22B`, `Qwen-14B`, or custom models.
 - **Sidebar Activity Container**: Direct access to Apex Studio in the VS Code Activity Bar.
 - **Plan Tab**: Input feature specifications, toggle live DuckDuckGo web research, view real-time cognitive reasoning traces, and preview the generated invariant step DAG.
 - **Act Tab**: Step-by-step progress tracking, one-click execution of planned steps with AST validation, live unified diff reviews, and terminal verification feedback.
@@ -105,10 +141,16 @@ You can use the full cognitive pipeline directly from the command line:
 # Check status of models and daemon
 python3 -m engine.cli status
 
+# View available models and preset suites
+python3 -m engine.cli models
+
+# Switch default model suite
+python3 -m engine.cli set-model --suite mistral
+
 # Search web for library documentation
 python3 -m engine.cli search "fastapi lifespan asynccontextmanager"
 
-# Plan a feature using ApexPhi-Think-14B with autonomous web search
+# Plan a feature using chosen thinking model with autonomous web search
 python3 -m engine.cli plan "Add rate-limiting middleware using Redis token-bucket"
 
 # Execute a single step from APEX_PLAN.json
@@ -130,11 +172,13 @@ The Apex Studio backend daemon runs on `http://127.0.0.1:8000`:
 | Endpoint | Method | Description |
 |---|---|---|
 | `/api/status` | `GET` | Health check, connected models, active plan status |
+| `/api/models` | `GET` | List all Ollama models, recommendations, and preset suites |
+| `/api/models/select` | `POST` | Switch active think and/or coder model |
 | `/api/search` | `POST` | DuckDuckGo search query execution |
 | `/api/scrape` | `POST` | Webpage scraper and markdown extractor |
-| `/api/plan` | `POST` | Synthesize feature plan with `apex-phi-think-14b` |
+| `/api/plan` | `POST` | Synthesize feature plan with active thinking model |
 | `/api/plan/current` | `GET` | Retrieve the active plan DAG (`APEX_PLAN.json`) |
-| `/api/execute-step` | `POST` | Execute step with `apex-phi-coder-14b` |
+| `/api/execute-step` | `POST` | Execute step with active coder model |
 | `/api/execute-all` | `POST` | Sequentially execute all pending steps |
 | `/api/plan/reset` | `POST` | Clear active plan |
 

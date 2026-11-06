@@ -43,6 +43,11 @@
     },
     "commands": [
       {
+        "command": "apexStudio.switchModel",
+        "title": "Apex Studio: Switch Model Suite / Active Models",
+        "category": "Apex Studio"
+      },
+      {
         "command": "apexStudio.planFeature",
         "title": "Apex Studio: Plan Feature (ApexPhi-Think)",
         "category": "Apex Studio"

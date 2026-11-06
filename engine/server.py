@@ -1,6 +1,7 @@
 """
 Apex Studio Daemon API Server.
-Bridges VS Code Extension, Web UI, and CLI with the dual-model Apex engine.
+Bridges VS Code Extension, Web UI, and CLI with the multi-model Apex engine.
+Allows dynamic switching between any Ollama models (ApexPhi, ApexMistral, ApexQwen, DeepSeek, Codestral, etc.).
 """
 
 import json
@@ -21,7 +22,7 @@ from engine.web_tools import search_web, fetch_page_content
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("apex_studio.server")
 
-app = FastAPI(title="Apex Studio Engine", version="1.0.0")
+app = FastAPI(title="Apex Studio Engine", version="1.1.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -33,8 +34,23 @@ app.add_middleware(
 
 WORKSPACE_DIR = Path(os.environ.get("APEX_WORKSPACE", os.getcwd())).resolve()
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
+CONFIG_FILE = WORKSPACE_DIR / "APEX_CONFIG.json"
+
+# Default Model Selection
 THINK_MODEL = os.environ.get("APEX_THINK_MODEL", "apex-phi-think-14b")
 CODER_MODEL = os.environ.get("APEX_CODER_MODEL", "apex-phi-coder-14b")
+
+# Load persisted configuration if exists
+if CONFIG_FILE.exists():
+    try:
+        saved_cfg = json.loads(CONFIG_FILE.read_text(encoding="utf-8"))
+        if "think_model" in saved_cfg:
+            THINK_MODEL = saved_cfg["think_model"]
+        if "coder_model" in saved_cfg:
+            CODER_MODEL = saved_cfg["coder_model"]
+        logger.info("Loaded persisted model configuration: think=%s, coder=%s", THINK_MODEL, CODER_MODEL)
+    except Exception as e:
+        logger.warning("Failed to load APEX_CONFIG.json: %s", e)
 
 planner = ApexPlanner(ollama_url=OLLAMA_URL, model=THINK_MODEL, workspace_dir=str(WORKSPACE_DIR))
 coder = ApexCoder(ollama_url=OLLAMA_URL, model=CODER_MODEL, workspace_dir=str(WORKSPACE_DIR))
@@ -51,13 +67,41 @@ def add_log(msg: str):
         execution_logs.pop(0)
 
 
+def save_config():
+    try:
+        cfg = {
+            "think_model": THINK_MODEL,
+            "coder_model": CODER_MODEL
+        }
+        CONFIG_FILE.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
+    except Exception as e:
+        logger.warning("Could not persist APEX_CONFIG.json: %s", e)
+
+
+def fetch_ollama_models() -> List[str]:
+    """Retrieve all available models installed in Ollama."""
+    try:
+        resp = requests.get(f"{OLLAMA_URL}/api/tags", timeout=5)
+        if resp.status_code == 200:
+            return [m["name"].split(":")[0] if m["name"].endswith(":latest") else m["name"] for m in resp.json().get("models", [])]
+    except Exception as e:
+        logger.warning("Could not reach Ollama: %s", e)
+    return []
+
+
 class PlanRequest(BaseModel):
     prompt: str
     allow_search: bool = True
+    think_model: Optional[str] = None
 
 
 class ExecuteStepRequest(BaseModel):
     step_id: int
+    coder_model: Optional[str] = None
+
+
+class ExecuteAllRequest(BaseModel):
+    coder_model: Optional[str] = None
 
 
 class SearchRequest(BaseModel):
@@ -70,18 +114,16 @@ class ScrapeRequest(BaseModel):
     max_chars: int = 5000
 
 
+class ModelSelectRequest(BaseModel):
+    think_model: Optional[str] = None
+    coder_model: Optional[str] = None
+
+
 @app.get("/health")
 @app.get("/api/status")
 def get_status():
-    ollama_ok = False
-    available_models = []
-    try:
-        resp = requests.get(f"{OLLAMA_URL}/api/tags", timeout=5)
-        if resp.status_code == 200:
-            ollama_ok = True
-            available_models = [m["name"] for m in resp.json().get("models", [])]
-    except Exception as e:
-        logger.warning("Ollama healthcheck failed: %s", e)
+    available_models = fetch_ollama_models()
+    ollama_ok = len(available_models) > 0
 
     return {
         "status": "online",
@@ -91,9 +133,82 @@ def get_status():
         "coder_model": CODER_MODEL,
         "think_model_ready": any(THINK_MODEL in m for m in available_models),
         "coder_model_ready": any(CODER_MODEL in m for m in available_models),
+        "available_models": available_models,
         "has_active_plan": current_plan is not None,
         "total_steps": len(current_plan.steps) if current_plan else 0,
         "recent_logs": execution_logs[-10:]
+    }
+
+
+@app.get("/api/models")
+def get_models():
+    """List all available models in Ollama with recommendations and presets."""
+    all_models = fetch_ollama_models()
+    
+    # Categorize recommended models
+    think_candidates = [m for m in all_models if "think" in m.lower() or "r1" in m.lower()]
+    coder_candidates = [m for m in all_models if "coder" in m.lower() or "code" in m.lower()]
+    
+    # Suites
+    suites = [
+        {
+            "id": "phi",
+            "name": "Apex Phi Suite (14B)",
+            "think_model": "apex-phi-think-14b",
+            "coder_model": "apex-phi-coder-14b",
+            "description": "Optimized Phi-4 based reasoning and coding duo."
+        },
+        {
+            "id": "mistral",
+            "name": "Apex Mistral Suite (22B)",
+            "think_model": "apex-mistral-think-22b",
+            "coder_model": "apex-mistral-coder-22b",
+            "description": "High-capacity Mistral NeMo 22B architecture."
+        },
+        {
+            "id": "qwen",
+            "name": "Apex Qwen Suite (14B)",
+            "think_model": "apex-think-14b",
+            "coder_model": "apex-coder-14b",
+            "description": "Compact Invariant Distilled Qwen-2.5 14B."
+        }
+    ]
+
+    return {
+        "active_think_model": THINK_MODEL,
+        "active_coder_model": CODER_MODEL,
+        "all_models": all_models,
+        "recommended_think_models": think_candidates or all_models,
+        "recommended_coder_models": coder_candidates or all_models,
+        "suites": suites
+    }
+
+
+@app.post("/api/models/select")
+def select_models(req: ModelSelectRequest):
+    """Switch active planner and/or coder models dynamically."""
+    global THINK_MODEL, CODER_MODEL
+    updated = False
+
+    if req.think_model:
+        THINK_MODEL = req.think_model
+        planner.set_model(THINK_MODEL)
+        add_log(f"Switched active Planner Model to: {THINK_MODEL}")
+        updated = True
+
+    if req.coder_model:
+        CODER_MODEL = req.coder_model
+        coder.set_model(CODER_MODEL)
+        add_log(f"Switched active Coder Model to: {CODER_MODEL}")
+        updated = True
+
+    if updated:
+        save_config()
+
+    return {
+        "status": "success",
+        "active_think_model": THINK_MODEL,
+        "active_coder_model": CODER_MODEL
     }
 
 
@@ -110,15 +225,17 @@ def api_scrape(req: ScrapeRequest):
 @app.post("/api/plan")
 def api_plan_feature(req: PlanRequest):
     global current_plan
-    add_log(f"Received plan request: '{req.prompt}' (search={req.allow_search})")
+    model_to_use = req.think_model or THINK_MODEL
+    add_log(f"Received plan request using {model_to_use}: '{req.prompt}' (search={req.allow_search})")
     try:
         plan = planner.plan_feature(
             feature_prompt=req.prompt,
             allow_search=req.allow_search,
-            progress_cb=add_log
+            progress_cb=add_log,
+            model=model_to_use
         )
         current_plan = plan
-        return {"status": "success", "plan": plan.model_dump()}
+        return {"status": "success", "plan": plan.model_dump(), "model_used": model_to_use}
     except Exception as e:
         logger.exception("Planning failed")
         raise HTTPException(status_code=500, detail=str(e))
@@ -157,13 +274,15 @@ def api_execute_step(req: ExecuteStepRequest):
     if not target_step:
         raise HTTPException(status_code=404, detail=f"Step ID {req.step_id} not found in plan.")
 
-    add_log(f"Executing step {target_step.id}: {target_step.title} -> {target_step.target_file}")
+    model_to_use = req.coder_model or CODER_MODEL
+    add_log(f"Executing step {target_step.id} using {model_to_use}: {target_step.title} -> {target_step.target_file}")
     target_step.status = "running"
 
     result = coder.execute_step(
         step=target_step,
         feature_objective=current_plan.objective,
-        progress_cb=add_log
+        progress_cb=add_log,
+        model=model_to_use
     )
 
     target_step.status = "completed" if result.success else "failed"
@@ -176,25 +295,27 @@ def api_execute_step(req: ExecuteStepRequest):
     return {
         "status": "success" if result.success else "error",
         "result": result.to_dict(),
-        "step": target_step.model_dump()
+        "step": target_step.model_dump(),
+        "model_used": model_to_use
     }
 
 
 @app.post("/api/execute-all")
-def api_execute_all():
+def api_execute_all(req: Optional[ExecuteAllRequest] = None):
     global current_plan
     if not current_plan:
         api_get_current_plan()
     if not current_plan:
         raise HTTPException(status_code=400, detail="No active plan found.")
 
+    model_to_use = (req.coder_model if req else None) or CODER_MODEL
     results = []
     for step in current_plan.steps:
         if step.status == "completed":
             continue
-        add_log(f"Auto-executing step {step.id} / {len(current_plan.steps)}: {step.title}")
+        add_log(f"Auto-executing step {step.id} / {len(current_plan.steps)} using {model_to_use}: {step.title}")
         step.status = "running"
-        res = coder.execute_step(step, current_plan.objective, progress_cb=add_log)
+        res = coder.execute_step(step, current_plan.objective, progress_cb=add_log, model=model_to_use)
         step.status = "completed" if res.success else "failed"
         step.error = res.error
         results.append(res.to_dict())
@@ -208,7 +329,8 @@ def api_execute_all():
     return {
         "status": "completed",
         "results": results,
-        "plan": current_plan.model_dump()
+        "plan": current_plan.model_dump(),
+        "model_used": model_to_use
     }
 
 

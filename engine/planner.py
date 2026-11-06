@@ -60,17 +60,24 @@ class ApexPlanner:
         self.model = model
         self.workspace_dir = Path(workspace_dir or os.getcwd()).resolve()
 
+    def set_model(self, model: str):
+        """Update active planner model."""
+        self.model = model
+        logger.info("Planner active model switched to: %s", model)
+
     def _query_ollama(
         self,
         prompt: str,
         system_prompt: Optional[str] = None,
         json_format: bool = False,
         temperature: float = 0.4,
-        num_predict: int = 1200
+        num_predict: int = 1200,
+        model: Optional[str] = None
     ) -> str:
-        """Query local Ollama server running ApexPhi-Think."""
+        """Query local Ollama server running specified thinking model."""
+        active_model = model or self.model
         payload: Dict[str, Any] = {
-            "model": self.model,
+            "model": active_model,
             "prompt": prompt,
             "stream": False,
             "options": {
@@ -96,13 +103,15 @@ class ApexPlanner:
     def conduct_web_research(
         self,
         feature_brief: str,
-        progress_cb: Optional[Callable[[str], None]] = None
+        progress_cb: Optional[Callable[[str], None]] = None,
+        model: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """Autonomously determine search queries, search the web, and scrape relevant documentation."""
+        active_model = model or self.model
         if progress_cb:
-            progress_cb("Analyzing feature brief for necessary web research...")
+            progress_cb(f"Analyzing feature brief for necessary web research using {active_model}...")
 
-        research_prompt = f"""You are ApexPhi-Think. Determine what external documentation, library APIs, or technical specs are needed to implement this feature:
+        research_prompt = f"""You are a cognitive architecture planner. Determine what external documentation, library APIs, or technical specs are needed to implement this feature:
 Feature: {feature_brief}
 
 Provide 1 to 3 distinct search queries to find the most accurate documentation and API references.
@@ -111,7 +120,7 @@ QUERY: <search query 1>
 QUERY: <search query 2>
 QUERY: <search query 3>"""
 
-        raw_queries = self._query_ollama(research_prompt, temperature=0.3, num_predict=200)
+        raw_queries = self._query_ollama(research_prompt, temperature=0.3, num_predict=200, model=active_model)
         queries = []
         for line in raw_queries.splitlines():
             line = line.strip()
@@ -149,13 +158,15 @@ QUERY: <search query 3>"""
         self,
         feature_prompt: str,
         allow_search: bool = True,
-        progress_cb: Optional[Callable[[str], None]] = None
+        progress_cb: Optional[Callable[[str], None]] = None,
+        model: Optional[str] = None
     ) -> ApexPlan:
-        """Synthesize a complete implementation plan using ApexPhi-Think-14B with optional web research."""
+        """Synthesize a complete implementation plan using the selected thinking model with optional web research."""
+        active_model = model or self.model
         research_notes: List[Dict[str, Any]] = []
         if allow_search:
             try:
-                research_notes = self.conduct_web_research(feature_prompt, progress_cb)
+                research_notes = self.conduct_web_research(feature_prompt, progress_cb, model=active_model)
             except Exception as e:
                 logger.error("Web research error: %s", e)
                 if progress_cb:
@@ -216,14 +227,15 @@ Schema:
 Synthesize the implementation plan strictly conforming to the JSON schema."""
 
         if progress_cb:
-            progress_cb("Synthesizing step-by-step invariant plan using ApexPhi-Think-14B...")
+            progress_cb(f"Synthesizing step-by-step invariant plan using {active_model}...")
 
         raw_plan = self._query_ollama(
             prompt=user_prompt,
             system_prompt=system_prompt,
             json_format=True,
             temperature=0.3,
-            num_predict=2000
+            num_predict=2000,
+            model=active_model
         )
 
         try:
