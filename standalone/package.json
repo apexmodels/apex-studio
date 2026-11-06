@@ -1,0 +1,24 @@
+{
+  "name": "apex-studio-desktop",
+  "productName": "Apex Studio",
+  "version": "1.0.0",
+  "description": "Standalone Cognitive AI IDE powered by ApexPhi, ApexMistral, and ApexQwen",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build:mac": "electron-builder --mac"
+  },
+  "keywords": [
+    "ai",
+    "ide",
+    "vscode",
+    "monaco",
+    "ollama"
+  ],
+  "author": "Nilesh Chakraborty",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-packager": "^17.1.2"
+  }
+}

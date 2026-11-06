@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apex Studio - Cognitive AI IDE</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Monaco Editor AMD Loader -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
+</head>
+<body>
+    <div class="app-root">
+        <!-- Top Window Header Bar -->
+        <header class="app-header">
+            <div class="header-left">
+                <div class="traffic-lights-spacer"></div>
+                <div class="brand-title">
+                    <span class="brand-logo">▲</span>
+                    <span class="brand-name">Apex Studio</span>
+                </div>
+                <div id="workspaceBadge" class="workspace-pill" onclick="openWorkspaceDialog()" title="Click to open another folder">
+                    <span class="folder-icon">📁</span>
+                    <span id="workspaceName">Loading Workspace...</span>
+                </div>
+            </div>
+
+            <div class="header-center">
+                <!-- Model Switcher Control Bar -->
+                <div class="suite-pills">
+                    <button class="suite-pill active" id="suite-phi" onclick="selectSuite('phi')" title="ApexPhi-14B Suite">Phi-14B</button>
+                    <button class="suite-pill" id="suite-mistral" onclick="selectSuite('mistral')" title="ApexMistral-22B Suite">Mistral-22B</button>
+                    <button class="suite-pill" id="suite-qwen" onclick="selectSuite('qwen')" title="ApexQwen-14B Suite">Qwen-14B</button>
+                </div>
+                <div class="model-selects-inline">
+                    <div class="select-wrapper">
+                        <span class="icon-label">🧠</span>
+                        <select id="thinkModelSelect" onchange="onModelSelectChange()"></select>
+                    </div>
+                    <div class="select-wrapper">
+                        <span class="icon-label">⚡</span>
+                        <select id="coderModelSelect" onchange="onModelSelectChange()"></select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="header-right">
+                <button class="btn btn-sm btn-secondary" onclick="saveCurrentFile()" title="Save (Cmd+S)">💾 Save</button>
+                <button class="btn btn-sm btn-primary" onclick="switchToAiTab('plan')" title="Plan Feature (Cmd+P)">🚀 Plan</button>
+                <div id="engineStatus" class="status-indicator status-offline">Engine Offline</div>
+            </div>
+        </header>
+
+        <!-- Main Workspace Area -->
+        <main class="app-body">
+            <!-- Left Activity Bar -->
+            <nav class="activity-bar">
+                <button class="activity-btn active" id="actBtnExplorer" onclick="switchSidebarView('explorer')" title="File Explorer">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <path d="M3 7v13a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-6l-2-2H5a2 2 0 0 0-2 2z"/>
+                    </svg>
+                </button>
+                <button class="activity-btn" id="actBtnAi" onclick="switchSidebarView('ai')" title="Apex AI Studio">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <polygon points="12 2 2 20 22 20 12 2"/>
+                        <circle cx="12" cy="11" r="2.5" fill="currentColor"/>
+                    </svg>
+                </button>
+                <button class="activity-btn mt-auto" onclick="toggleTerminal()" title="Toggle Output Terminal">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <polyline points="4 17 10 11 4 5"/>
+                        <line x1="12" y1="19" x2="20" y2="19"/>
+                    </svg>
+                </button>
+            </nav>
+
+            <!-- Sidebar Panel -->
+            <aside class="sidebar-panel">
+                <!-- EXPLORER VIEW -->
+                <div id="viewExplorer" class="sidebar-view active">
+                    <div class="panel-header">
+                        <span class="panel-title">EXPLORER</span>
+                        <div class="panel-actions">
+                            <button class="icon-btn" onclick="promptNewFile()" title="New File">📄+</button>
+                            <button class="icon-btn" onclick="promptNewFolder()" title="New Folder">📁+</button>
+                            <button class="icon-btn" onclick="refreshFileTree()" title="Refresh">🔄</button>
+                        </div>
+                    </div>
+                    <div id="fileTreeContainer" class="file-tree"></div>
+                </div>
+
+                <!-- AI STUDIO VIEW -->
+                <div id="viewAi" class="sidebar-view">
+                    <div class="ai-tabs">
+                        <button id="aiTabPlanBtn" class="ai-tab active" onclick="switchAiTab('plan')">1. Plan (Cognition)</button>
+                        <button id="aiTabActBtn" class="ai-tab" onclick="switchAiTab('act')">2. Act (Coder)</button>
+                    </div>
+
+                    <!-- AI Plan View -->
+                    <div id="aiPlanView" class="ai-content active">
+                        <div class="form-group">
+                            <label class="form-label">Feature Specification</label>
+                            <textarea id="featurePrompt" class="input-area" rows="4" placeholder="Describe the feature or library to build with external web research..."></textarea>
+                            
+                            <label class="checkbox-row">
+                                <input type="checkbox" id="allowSearch" checked>
+                                <span>Autonomous Web Research (DuckDuckGo)</span>
+                            </label>
+
+                            <button id="btnSynthesize" class="btn btn-primary w-full" onclick="requestPlan()">
+                                <span>🚀 Synthesize Plan</span>
+                            </button>
+                        </div>
+
+                        <!-- Live Cognitive Feed -->
+                        <div id="feedCard" class="card hidden">
+                            <div class="card-header">Cognitive Trace</div>
+                            <div id="activityFeed" class="feed-box"></div>
+                        </div>
+
+                        <!-- Current Plan Summary -->
+                        <div id="planSummaryCard" class="card hidden">
+                            <div class="card-header" id="planFeatureName">Feature Plan</div>
+                            <p id="planObjective" class="text-muted"></p>
+                            
+                            <div class="sub-label">Guaranteed Invariants:</div>
+                            <ul id="planInvariants" class="invariants-list"></ul>
+
+                            <div class="sub-label">Planned Steps:</div>
+                            <div id="planStepsPreview" class="steps-preview-list"></div>
+
+                            <button class="btn btn-secondary w-full mt-2" onclick="switchAiTab('act')">
+                                Proceed to Actuation ➔
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- AI Act View -->
+                    <div id="aiActView" class="ai-content">
+                        <div class="act-header">
+                            <span class="sub-label">Step Implementation DAG</span>
+                            <button class="btn btn-secondary btn-sm" onclick="executeAllSteps()">Run All</button>
+                        </div>
+
+                        <div id="noPlanNotice" class="notice">
+                            No active plan. Create a plan in the Plan tab first.
+                        </div>
+
+                        <div id="stepsContainer" class="steps-list"></div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Center Editor & Output Area -->
+            <section class="editor-area">
+                <!-- Editor Tabs -->
+                <div class="tabs-header" id="tabsHeader"></div>
+
+                <!-- Monaco Editor Viewport -->
+                <div id="monacoViewport" class="monaco-viewport"></div>
+
+                <!-- Bottom Terminal / Output Drawer -->
+                <div class="terminal-drawer" id="terminalDrawer">
+                    <div class="terminal-drawer-header">
+                        <div class="drawer-title">
+                            <span>OUTPUT / TEST RUNNER</span>
+                            <span id="activeProcessLabel" class="text-muted"></span>
+                        </div>
+                        <div class="drawer-actions">
+                            <button class="btn btn-xs btn-secondary" onclick="clearLogs()">Clear</button>
+                            <button class="btn btn-xs btn-secondary" onclick="toggleTerminal()">✕</button>
+                        </div>
+                    </div>
+                    <div id="terminalBody" class="terminal-drawer-body"></div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Bottom Status Bar -->
+        <footer class="app-statusbar">
+            <div class="status-left">
+                <span id="statusFileLabel">No File Open</span>
+                <span id="statusCursorPos">Ln 1, Col 1</span>
+            </div>
+            <div class="status-right">
+                <span id="statusEncoding">UTF-8</span>
+                <span id="statusLanguage">Plain Text</span>
+                <span id="statusActiveSuite">Suite: Phi-14B</span>
+                <span id="statusEngineHost">Engine: :8000</span>
+            </div>
+        </footer>
+    </div>
+
+    <script src="renderer.js"></script>
+</body>
+</html>
