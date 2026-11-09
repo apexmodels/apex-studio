@@ -159,10 +159,13 @@ QUERY: <search query 3>"""
         feature_prompt: str,
         allow_search: bool = True,
         progress_cb: Optional[Callable[[str], None]] = None,
-        model: Optional[str] = None
+        model: Optional[str] = None,
+        thinking_depth: str = "standard"
     ) -> ApexPlan:
         """Synthesize a complete implementation plan using the selected thinking model with optional web research."""
         active_model = model or self.model
+        depth_predict = {"fast": 1500, "standard": 2500, "deep": 5000}
+        num_predict = depth_predict.get(thinking_depth, 2500)
         research_notes: List[Dict[str, Any]] = []
         if allow_search:
             try:
@@ -234,7 +237,7 @@ Synthesize the implementation plan strictly conforming to the JSON schema."""
             system_prompt=system_prompt,
             json_format=True,
             temperature=0.3,
-            num_predict=2000,
+            num_predict=num_predict,
             model=active_model
         )
 

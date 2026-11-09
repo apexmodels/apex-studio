@@ -149,22 +149,80 @@ function requestPlan() {
     }
 
     const allowSearch = document.getElementById('allowSearch').checked;
+    const depth = document.getElementById('thinkingDepthSelect')?.value || 'standard';
     const btn = document.getElementById('btnPlan');
     btn.disabled = true;
-    btn.innerHTML = `<span>⏳ Synthesizing (${activeThinkModel})...</span>`;
+    btn.innerHTML = `<span>⏳ Synthesizing (${activeThinkModel} • ${depth})...</span>`;
 
     const activityCard = document.getElementById('activityCard');
     activityCard.classList.remove('hidden');
     const feed = document.getElementById('activityFeed');
-    feed.textContent = `Autonomous Cognition Initialized (${activeThinkModel})...\n- Exploring requirements for: "${prompt}"\n- Web search enabled: ${allowSearch}\n`;
+    feed.textContent = `Autonomous Cognition Initialized (${activeThinkModel} [depth: ${depth}])...\n- Exploring requirements for: "${prompt}"\n- Web search enabled: ${allowSearch}\n`;
 
-    addLog(`Initiating planning with ${activeThinkModel}...`);
+    addLog(`Initiating planning with ${activeThinkModel} (${depth})...`);
     vscode.postMessage({
         type: 'planFeature',
         prompt: prompt,
         allow_search: allowSearch,
-        think_model: activeThinkModel
+        think_model: activeThinkModel,
+        thinking_depth: depth
     });
+}
+
+// Voice Input Support
+let extRecognition = null;
+let extRecording = false;
+
+function toggleVoiceInput() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const btn = document.getElementById('btnVoiceInput');
+    const promptEl = document.getElementById('featurePrompt');
+
+    if (!SpeechRecognition) {
+        addLog('Speech recognition not available in this VS Code webview window.');
+        return;
+    }
+
+    if (extRecording && extRecognition) {
+        extRecognition.stop();
+        extRecording = false;
+        btn.textContent = '🎙️ Dictate';
+        return;
+    }
+
+    try {
+        extRecognition = new SpeechRecognition();
+        extRecognition.continuous = false;
+        extRecognition.interimResults = true;
+        extRecognition.lang = 'en-US';
+
+        extRecognition.onstart = () => {
+            extRecording = true;
+            btn.textContent = '🔴 Listening...';
+        };
+
+        extRecognition.onresult = (ev) => {
+            let transcript = '';
+            for (let i = ev.resultIndex; i < ev.results.length; i++) {
+                transcript += ev.results[i][0].transcript;
+            }
+            promptEl.value = transcript;
+        };
+
+        extRecognition.onend = () => {
+            extRecording = false;
+            btn.textContent = '🎙️ Dictate';
+        };
+
+        extRecognition.onerror = () => {
+            extRecording = false;
+            btn.textContent = '🎙️ Dictate';
+        };
+
+        extRecognition.start();
+    } catch (e) {
+        btn.textContent = '🎙️ Dictate';
+    }
 }
 
 function executeStep(stepId) {

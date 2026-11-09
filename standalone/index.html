@@ -98,15 +98,25 @@
                     <!-- AI Plan View -->
                     <div id="aiPlanView" class="ai-content active">
                         <div class="form-group">
-                            <label class="form-label">Feature Specification</label>
-                            <textarea id="featurePrompt" class="input-area" rows="4" placeholder="Describe the feature or library to build with external web research..."></textarea>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <label class="form-label" style="margin-bottom: 0;">Feature Specification</label>
+                                <button id="btnVoiceInput" type="button" class="btn btn-xs btn-secondary" onclick="toggleVoiceInput()" title="Voice Dictation (Speech to Text)">🎙️ Dictate</button>
+                            </div>
+                            <textarea id="featurePrompt" class="input-area mt-1" rows="4" placeholder="Describe the feature or library to build with external web research (or click 🎙️ Dictate)..."></textarea>
                             
-                            <label class="checkbox-row">
-                                <input type="checkbox" id="allowSearch" checked>
-                                <span>Autonomous Web Research (DuckDuckGo)</span>
-                            </label>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+                                <label class="checkbox-row" style="margin-bottom: 0;">
+                                    <input type="checkbox" id="allowSearch" checked>
+                                    <span>Web Research (DuckDuckGo)</span>
+                                </label>
+                                <select id="thinkingDepthSelect" class="select-sm" style="font-size: 11px; background: #1e293b; color: #cbd5e1; border: 1px solid #334155; border-radius: 4px; padding: 2px 6px;" title="Thinking Depth & Budget">
+                                    <option value="fast">⚡ Fast (1.5k)</option>
+                                    <option value="standard" selected>🧠 Standard (2.5k)</option>
+                                    <option value="deep">🔬 Deep (5k)</option>
+                                </select>
+                            </div>
 
-                            <button id="btnSynthesize" class="btn btn-primary w-full" onclick="requestPlan()">
+                            <button id="btnSynthesize" class="btn btn-primary w-full mt-2" onclick="requestPlan()">
                                 <span>🚀 Synthesize Plan</span>
                             </button>
                         </div>
@@ -128,9 +138,14 @@
                             <div class="sub-label">Planned Steps:</div>
                             <div id="planStepsPreview" class="steps-preview-list"></div>
 
-                            <button class="btn btn-secondary w-full mt-2" onclick="switchAiTab('act')">
-                                Proceed to Actuation ➔
-                            </button>
+                            <div style="display: flex; gap: 8px; margin-top: 8px;">
+                                <button class="btn btn-secondary btn-sm" style="flex: 1;" onclick="speakCurrentPlan()" title="Read Plan Summary Aloud">
+                                    🔊 Read Aloud
+                                </button>
+                                <button class="btn btn-secondary btn-sm" style="flex: 1;" onclick="switchAiTab('act')">
+                                    Proceed ➔
+                                </button>
+                            </div>
                         </div>
                     </div>
 

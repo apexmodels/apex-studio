@@ -396,16 +396,17 @@ async function requestPlan() {
     }
 
     const allowSearch = document.getElementById('allowSearch').checked;
+    const depth = document.getElementById('thinkingDepthSelect')?.value || 'standard';
     const btn = document.getElementById('btnSynthesize');
     btn.disabled = true;
-    btn.innerHTML = `<span>⏳ Synthesizing (${activeThinkModel})...</span>`;
+    btn.innerHTML = `<span>⏳ Synthesizing (${activeThinkModel} • ${depth})...</span>`;
 
     const feedCard = document.getElementById('feedCard');
     feedCard.classList.remove('hidden');
     const feedBox = document.getElementById('activityFeed');
-    feedBox.textContent = `[Cognitive Plan Initiated]\nTarget Model: ${activeThinkModel}\nFeature: "${prompt}"\nWeb Research: ${allowSearch}\n`;
+    feedBox.textContent = `[Cognitive Plan Initiated]\nTarget Model: ${activeThinkModel} (Depth: ${depth})\nFeature: "${prompt}"\nWeb Research: ${allowSearch}\n`;
 
-    log(`Synthesizing feature plan with ${activeThinkModel}...`);
+    log(`Synthesizing feature plan with ${activeThinkModel} (Depth: ${depth})...`);
 
     try {
         const resp = await fetch(`${API_BASE}/api/plan`, {
@@ -414,7 +415,8 @@ async function requestPlan() {
             body: JSON.stringify({
                 prompt: prompt,
                 allow_search: allowSearch,
-                think_model: activeThinkModel
+                think_model: activeThinkModel,
+                thinking_depth: depth
             })
         });
 
@@ -432,6 +434,83 @@ async function requestPlan() {
         btn.disabled = false;
         btn.innerHTML = `<span>🚀 Synthesize Plan</span>`;
         log(`Planning error: ${e.message}`);
+    }
+}
+
+// Voice Integration (STT & TTS)
+let recognitionInstance = null;
+let isRecordingInput = false;
+
+function toggleVoiceInput() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const btn = document.getElementById('btnVoiceInput');
+    const promptEl = document.getElementById('featurePrompt');
+
+    if (!SpeechRecognition) {
+        alert('Speech recognition is not supported in this runtime. Type your feature prompt directly.');
+        return;
+    }
+
+    if (isRecordingInput && recognitionInstance) {
+        recognitionInstance.stop();
+        isRecordingInput = false;
+        btn.innerHTML = '🎙️ Dictate';
+        return;
+    }
+
+    try {
+        recognitionInstance = new SpeechRecognition();
+        recognitionInstance.continuous = false;
+        recognitionInstance.interimResults = true;
+        recognitionInstance.lang = 'en-US';
+
+        recognitionInstance.onstart = () => {
+            isRecordingInput = true;
+            btn.innerHTML = '🔴 Listening...';
+        };
+
+        recognitionInstance.onresult = (ev) => {
+            let transcript = '';
+            for (let i = ev.resultIndex; i < ev.results.length; i++) {
+                transcript += ev.results[i][0].transcript;
+            }
+            promptEl.value = transcript;
+        };
+
+        recognitionInstance.onerror = () => {
+            isRecordingInput = false;
+            btn.innerHTML = '🎙️ Dictate';
+        };
+
+        recognitionInstance.onend = () => {
+            isRecordingInput = false;
+            btn.innerHTML = '🎙️ Dictate';
+        };
+
+        recognitionInstance.start();
+    } catch (err) {
+        console.warn('Voice recognition error:', err);
+        btn.innerHTML = '🎙️ Dictate';
+    }
+}
+
+function speakCurrentPlan() {
+    if (!currentPlan) return;
+    const objective = currentPlan.objective || currentPlan.feature_name || 'No plan active';
+    const numSteps = currentPlan.steps ? currentPlan.steps.length : 0;
+    const spokenText = `Plan for ${currentPlan.feature_name}. Objective: ${objective}. Total implementation steps: ${numSteps}.`;
+
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utter = new SpeechSynthesisUtterance(spokenText);
+        utter.rate = 1.05;
+        window.speechSynthesis.speak(utter);
+    } else {
+        fetch(`${API_BASE}/api/voice/speak`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: spokenText })
+        }).catch(e => console.warn('TTS fetch error:', e));
     }
 }
 

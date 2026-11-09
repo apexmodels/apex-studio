@@ -129,7 +129,8 @@ class ApexSidebarProvider implements vscode.WebviewViewProvider {
                         const result = await postJson('/api/plan', {
                             prompt: data.prompt,
                             allow_search: data.allow_search !== false,
-                            think_model: data.think_model
+                            think_model: data.think_model,
+                            thinking_depth: data.thinking_depth || 'standard'
                         });
                         webviewView.webview.postMessage({ type: 'planCreated', data: result.plan });
                         vscode.window.showInformationMessage(`Apex Studio: Plan created with ${result.plan.steps.length} steps!`);

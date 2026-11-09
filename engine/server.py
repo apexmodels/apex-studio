@@ -7,6 +7,8 @@ Allows dynamic switching between any Ollama models (ApexPhi, ApexMistral, ApexQw
 import json
 import logging
 import os
+import re
+import subprocess
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 import requests
@@ -93,6 +95,13 @@ class PlanRequest(BaseModel):
     prompt: str
     allow_search: bool = True
     think_model: Optional[str] = None
+    thinking_depth: Optional[str] = "standard"
+
+
+class VoiceSpeakRequest(BaseModel):
+    text: str
+    voice: Optional[str] = "Samantha"
+    rate: Optional[int] = 190
 
 
 class ExecuteStepRequest(BaseModel):
@@ -226,19 +235,92 @@ def api_scrape(req: ScrapeRequest):
 def api_plan_feature(req: PlanRequest):
     global current_plan
     model_to_use = req.think_model or THINK_MODEL
-    add_log(f"Received plan request using {model_to_use}: '{req.prompt}' (search={req.allow_search})")
+    depth = req.thinking_depth or "standard"
+    add_log(f"Received plan request using {model_to_use} [depth={depth}]: '{req.prompt}' (search={req.allow_search})")
     try:
         plan = planner.plan_feature(
             feature_prompt=req.prompt,
             allow_search=req.allow_search,
             progress_cb=add_log,
-            model=model_to_use
+            model=model_to_use,
+            thinking_depth=depth
         )
         current_plan = plan
-        return {"status": "success", "plan": plan.model_dump(), "model_used": model_to_use}
+        return {"status": "success", "plan": plan.model_dump(), "model_used": model_to_use, "thinking_depth": depth}
     except Exception as e:
         logger.exception("Planning failed")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/voice/voices")
+def get_voices():
+    """List macOS say voices."""
+    voices = []
+    try:
+        res = subprocess.run(["say", "-v", "?"], capture_output=True, text=True, check=True)
+        for line in res.stdout.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            parts = line.split(maxsplit=2)
+            if len(parts) >= 2:
+                voices.append({"name": parts[0], "lang": parts[1]})
+    except Exception as e:
+        logger.warning("Could not query voices: %s", e)
+        voices = [{"name": "Samantha", "lang": "en_US"}, {"name": "Alex", "lang": "en_US"}]
+    return {"voices": voices}
+
+
+_active_tts = None
+
+
+@app.post("/api/voice/speak")
+def voice_speak(req: VoiceSpeakRequest):
+    """Speak text using macOS say command."""
+    global _active_tts
+    if _active_tts and _active_tts.poll() is None:
+        try:
+            _active_tts.terminate()
+        except Exception:
+            pass
+
+    # Clean text
+    text = req.text
+    if "</think>" in text:
+        text = text.split("</think>", 1)[1]
+    text = re.sub(r"```[\s\S]*?```", " Code block omitted. ", text)
+    text = re.sub(r"`([^`]+)`", r"\1", text)
+    text = re.sub(r"\[([^\]]+)\]\([^\)]+\)", r"\1", text)
+    text = re.sub(r"^#+\s*", "", text, flags=re.MULTILINE)
+    text = re.sub(r"[\*_~]", "", text).strip()
+
+    if not text:
+        return {"status": "skipped", "message": "No speakable text"}
+
+    try:
+        cmd = ["say"]
+        if req.voice:
+            cmd.extend(["-v", req.voice])
+        if req.rate:
+            cmd.extend(["-r", str(req.rate)])
+        cmd.append(text)
+        _active_tts = subprocess.Popen(cmd)
+        return {"status": "speaking", "voice": req.voice}
+    except Exception as e:
+        logger.error("TTS error: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/voice/stop")
+def voice_stop():
+    global _active_tts
+    if _active_tts and _active_tts.poll() is None:
+        try:
+            _active_tts.terminate()
+            return {"status": "stopped"}
+        except Exception:
+            pass
+    return {"status": "idle"}
 
 
 @app.get("/api/plan/current")

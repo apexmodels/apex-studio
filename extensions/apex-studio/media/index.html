@@ -56,14 +56,22 @@
         <!-- PLAN VIEW -->
         <div id="planView" class="tab-content active">
             <div class="section">
-                <label for="featurePrompt" class="label">Feature Specification</label>
-                <textarea id="featurePrompt" class="input-area" rows="4" placeholder="Describe the feature or API you want to build (e.g. 'Build rate-limiting middleware using Redis token-bucket algorithm with FastAPI')"></textarea>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                    <label for="featurePrompt" class="label" style="margin-bottom: 0;">Feature Specification</label>
+                    <button id="btnVoiceInput" type="button" class="btn btn-secondary btn-xs" onclick="toggleVoiceInput()" title="Voice Dictation">🎙️ Dictate</button>
+                </div>
+                <textarea id="featurePrompt" class="input-area" rows="4" placeholder="Describe the feature or API you want to build (or click 🎙️ Dictate)..."></textarea>
                 
-                <div class="option-row">
-                    <label class="checkbox-label">
+                <div class="option-row" style="display: flex; justify-content: space-between; align-items: center;">
+                    <label class="checkbox-label" style="margin-bottom: 0;">
                         <input type="checkbox" id="allowSearch" checked>
-                        <span>Autonomous Web Research (Docs & APIs)</span>
+                        <span>Web Research</span>
                     </label>
+                    <select id="thinkingDepthSelect" style="font-size: 11px; background: var(--vscode-dropdown-background, #1e293b); color: var(--vscode-dropdown-foreground, #cbd5e1); border: 1px solid var(--vscode-dropdown-border, #334155); border-radius: 4px; padding: 2px 6px;" title="Thinking Depth">
+                        <option value="fast">⚡ Fast (1.5k)</option>
+                        <option value="standard" selected>🧠 Standard (2.5k)</option>
+                        <option value="deep">🔬 Deep (5k)</option>
+                    </select>
                 </div>
 
                 <button id="btnPlan" class="btn btn-primary" onclick="requestPlan()">
