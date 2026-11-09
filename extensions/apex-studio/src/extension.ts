@@ -228,7 +228,7 @@ function startEngineTerminal() {
         terminal = vscode.window.createTerminal('Apex Studio Engine');
     }
     terminal.show();
-    terminal.sendText('python3 -m engine.server');
+    terminal.sendText('cd /Users/nileshchakraborty/workspace/apex-studio && PYTHONPATH=. /Users/nileshchakraborty/workspace/.venv-qwen-systems/bin/python -m engine.server');
     vscode.window.showInformationMessage('Apex Studio Daemon started on http://127.0.0.1:8000');
 }
 
