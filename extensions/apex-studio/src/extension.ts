@@ -186,6 +186,26 @@ class ApexSidebarProvider implements vscode.WebviewViewProvider {
                     startEngineTerminal();
                     break;
                 }
+                case 'startDictation': {
+                    try {
+                        const { exec } = require('child_process');
+                        exec(`osascript -e 'tell application "System Events" to tell process "Code" to click menu item "Start Dictation…" of menu "Edit" of menu bar 1'`);
+                    } catch (e) {}
+
+                    const dictated = await vscode.window.showInputBox({
+                        prompt: '🎙️ Dictate or enter your prompt for Apex Studio (press Enter to insert):',
+                        placeHolder: 'Speak or type your feature prompt...',
+                        value: data.currentPrompt || ''
+                    });
+
+                    if (dictated !== undefined) {
+                        webviewView.webview.postMessage({
+                            type: 'setPrompt',
+                            text: dictated
+                        });
+                    }
+                    break;
+                }
             }
         });
     }

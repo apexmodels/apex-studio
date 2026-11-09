@@ -177,9 +177,13 @@ function toggleVoiceInput() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const btn = document.getElementById('btnVoiceInput');
     const promptEl = document.getElementById('featurePrompt');
+    const currentVal = promptEl ? promptEl.value : '';
 
     if (!SpeechRecognition) {
-        addLog('Speech recognition not available in this VS Code webview window.');
+        vscode.postMessage({
+            type: 'startDictation',
+            currentPrompt: currentVal
+        });
         return;
     }
 
@@ -315,6 +319,14 @@ function renderPlan(plan) {
 window.addEventListener('message', event => {
     const message = event.data;
     switch (message.type) {
+        case 'setPrompt': {
+            const promptEl = document.getElementById('featurePrompt');
+            if (promptEl && message.text !== undefined) {
+                promptEl.value = message.text;
+                addLog('Prompt updated via dictation.');
+            }
+            break;
+        }
         case 'statusUpdate': {
             const statusEl = document.getElementById('engineStatus');
             if (message.data.status === 'online') {
