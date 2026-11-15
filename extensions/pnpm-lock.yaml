@@ -853,8 +853,8 @@ importers:
         specifier: ^10.8.2
         version: 10.8.2
       node-forge:
-        specifier: ^1.4.0
-        version: 1.4.0
+        specifier: ^1.4.3
+        version: 1.4.3
       straightforward:
         specifier: ^4.2.2
         version: 4.2.2
@@ -2970,8 +2970,8 @@ packages:
   node-addon-api@7.1.1:
     resolution: {integrity: sha512-5m3bsyrjFWE1xf7nz7YXdN4udnVtXK6/Yfgn5qnahL6bCkf2yKt4k3nuTKAtT4r3IG8JNR2ncsIMdZuAzJjHQQ==}
 
-  node-forge@1.4.0:
-    resolution: {integrity: sha512-LarFH0+6VfriEhqMMcLX2F7SwSXeWwnEAJEsYm5QKWchiVYVvJyV9v7UDvUv+w5HO23ZpQTXDv/GxdDdMyOuoQ==}
+  node-forge@1.4.3:
+    resolution: {integrity: sha512-P6wzfh6t70avmV8FrVEAd/36sOPJQ+hkaJVX1Laap9J/77m7M0eyozDvc8SwnDf4P7MP94gwbAAo0rg3YVXT+g==}
     engines: {node: '>= 6.13.0'}
 
   node-html-parser@6.1.13:
@@ -3257,9 +3257,6 @@ packages:
   ts-dedent@2.2.0:
     resolution: {integrity: sha512-q5W7tVM71e2xjHZTlgfTDoPF/SmqKG5hddq9SzR49CH2hayqRKJtQ4mtRlSxKaJlR/+9rEM+mnBHf7I2/BQcpQ==}
     engines: {node: '>=6.10'}
-
-  tslib@2.6.3:
-    resolution: {integrity: sha512-xNvxJEOUiWPGhUuUdQgAJPKOOJfGnIyKySOc09XkKsgdUV/3E2zvwZYdejjmRgPCgcym1juLH3226yA7sEFJKQ==}
 
   tslib@2.8.1:
     resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
@@ -5176,7 +5173,7 @@ snapshots:
   graphql-tag@2.12.6(graphql@16.8.1):
     dependencies:
       graphql: 16.8.1
-      tslib: 2.6.3
+      tslib: 2.8.1
 
   graphql@16.8.1: {}
 
@@ -5763,7 +5760,7 @@ snapshots:
 
   node-addon-api@7.1.1: {}
 
-  node-forge@1.4.0: {}
+  node-forge@1.4.3: {}
 
   node-html-parser@6.1.13:
     dependencies:
@@ -6031,8 +6028,6 @@ snapshots:
       punycode: 2.3.1
 
   ts-dedent@2.2.0: {}
-
-  tslib@2.6.3: {}
 
   tslib@2.8.1: {}
 
